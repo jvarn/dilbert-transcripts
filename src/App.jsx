@@ -16,6 +16,8 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
+  const [searchStatus, setSearchStatus] = useState('') // For ARIA live region
+  const [immediateSearch, setImmediateSearch] = useState(false) // Flag for Enter key search
   const [loading, setLoading] = useState(true)
   const [loadingStage, setLoadingStage] = useState(null) // "index" | "year" | "search" | null
   const [loadingYear, setLoadingYear] = useState(null) // Track which year is being loaded
@@ -69,14 +71,27 @@ function App() {
     return data
   }, [baseUrl, loadedYears, comicsData])
 
+  // Handle immediate search (Enter key or button)
+  const handleImmediateSearch = useCallback(() => {
+    setImmediateSearch(true)
+    setDebouncedSearchTerm(searchTerm)
+  }, [searchTerm])
+
   // Debounce search term - wait 500ms after last keystroke
+  // Skip debounce if immediate search was triggered
   useEffect(() => {
+    if (immediateSearch) {
+      setDebouncedSearchTerm(searchTerm)
+      setImmediateSearch(false)
+      return
+    }
+    
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [searchTerm])
+  }, [searchTerm, immediateSearch])
 
   // Stage 1: Load index (cache first)
   // Stage 2: Determine target year
@@ -276,12 +291,23 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [comicsIndex, comicsData, loadYearData])
 
+  // Clear search status when search term is cleared
+  useEffect(() => {
+    if (!searchTerm) {
+      setSearchStatus('')
+    }
+  }, [searchTerm])
+
   // Handle search (two-phase approach)
   useEffect(() => {
     if (!comicsIndex || !debouncedSearchTerm) {
       setSearchResults([])
+      setSearchStatus('')
       return
     }
+
+    // Announce search start
+    setSearchStatus('Searching...')
 
     const term = debouncedSearchTerm.toLowerCase()
     
@@ -401,6 +427,12 @@ function App() {
           
           setSearchResults(results)
           setLoadingStage(null)
+          // Announce results
+          if (results.length === 0) {
+            setSearchStatus('No results found')
+          } else {
+            setSearchStatus(`${results.length} ${results.length === 1 ? 'result' : 'results'} found`)
+          }
         })
         .catch(error => {
           console.error('Error loading years for search:', error)
@@ -469,6 +501,12 @@ function App() {
       results.sort((a, b) => b.date.localeCompare(a.date))
       
       setSearchResults(results)
+      // Announce results
+      if (results.length === 0) {
+        setSearchStatus('No results found')
+      } else {
+        setSearchStatus(`${results.length} ${results.length === 1 ? 'result' : 'results'} found`)
+      }
     }
   }, [debouncedSearchTerm, comicsIndex, comicsData, loadYearData])
 
@@ -659,10 +697,10 @@ function App() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
-                Dilbert Comic Viewer
+                Dilbert Archive
               </h1>
               <p className="text-center text-gray-600 dark:text-gray-400 mt-2 text-sm md:text-base">
-                Accessible transcripts from 1989 to 2023
+                Preserving accessible transcripts of Dilbert comics (1989-2023)
               </p>
             </div>
             <div className="ml-4 flex items-center gap-2">
@@ -708,7 +746,18 @@ function App() {
                     <SearchBar 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      onSearch={handleImmediateSearch}
+                      searchButtonId="searchButton"
                     />
+                  </div>
+                  {/* ARIA live region for search status */}
+                  <div 
+                    role="status" 
+                    aria-live="polite" 
+                    aria-atomic="true"
+                    className="sr-only"
+                  >
+                    {searchStatus}
                   </div>
                   <div className="relative">
                     <DatePicker
@@ -734,7 +783,7 @@ function App() {
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4">
                   {loadingStage === 'search' ? (
                     <div className="text-center py-8">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-2"></div>
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-2" aria-hidden="true"></div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Searching...</p>
                     </div>
                   ) : (
