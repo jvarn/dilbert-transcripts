@@ -1,0 +1,22 @@
+# Requirements for emotion analysis scripts
+# 
+# Note: For Apple Silicon Macs (M1/M2/M3/M4), PyTorch should be installed separately:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# 
+# Then install the remaining packages:
+#   pip install -r requirements.txt
+
+# Core dependencies
+pandas>=2.0.0
+matplotlib>=3.7.0
+
+# Transformers and ML dependencies
+transformers>=4.30.0
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Optional but recommended
+tqdm>=4.65.0
+accelerate>=0.20.0
+

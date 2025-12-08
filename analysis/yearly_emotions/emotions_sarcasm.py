@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch
 from transformers import pipeline
 
 
@@ -77,6 +78,19 @@ def load_dataset() -> pd.DataFrame:
     return df
 
 
+def get_device():
+    """
+    Determine the best available device for model inference.
+    Priority: MPS (Apple Silicon) > CUDA (NVIDIA GPU) > CPU
+    """
+    if torch.backends.mps.is_available():
+        return "mps"
+    elif torch.cuda.is_available():
+        return "cuda"
+    else:
+        return "cpu"
+
+
 def build_sarcasm_pipeline():
     """
     Build a sarcasm / irony classifier.
@@ -88,9 +102,12 @@ def build_sarcasm_pipeline():
       - 'sarcasm' / 'non-sarcasm'
       - 'LABEL_0' / 'LABEL_1'
     """
+    device = get_device()
+    print(f"Using device: {device}")
     clf = pipeline(
         "text-classification",
         model="cardiffnlp/twitter-roberta-base-irony",
+        device=device,
     )
     return clf
 
@@ -184,7 +201,7 @@ def save_results(stats: pd.DataFrame, out_dir: Path):
     Save the yearly sarcasm statistics to CSV.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "yearly_sarcasm_stats.csv"
+    out_path = out_dir / "emotions_sarcasm_stats.csv"
     stats.to_csv(out_path, index=False)
     print(f"Yearly sarcasm statistics saved to: {out_path}")
 
@@ -214,7 +231,7 @@ def plot_sarcasm_trend(stats: pd.DataFrame, out_dir: Path):
     ax2.set_ylabel("Number of comics")
 
     fig.tight_layout()
-    out_path = out_dir / "yearly_sarcasm_trend.png"
+    out_path = out_dir / "emotions_sarcasm_trend.png"
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     print(f"Sarcasm trend plot saved to: {out_path}")
@@ -222,7 +239,7 @@ def plot_sarcasm_trend(stats: pd.DataFrame, out_dir: Path):
 
 def main():
     # Output directory relative to this script's location
-    out_dir = Path(__file__).parent / "yearly_sarcasm_output"
+    out_dir = Path(__file__).parent / "emotions_sarcasm_output"
 
     print("Loading dataset...")
     df = load_dataset()

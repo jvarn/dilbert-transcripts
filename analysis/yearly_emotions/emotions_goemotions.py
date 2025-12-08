@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch
 from transformers import pipeline
 
 
@@ -77,15 +78,31 @@ def load_dataset() -> pd.DataFrame:
     return df
 
 
+def get_device():
+    """
+    Determine the best available device for model inference.
+    Priority: MPS (Apple Silicon) > CUDA (NVIDIA GPU) > CPU
+    """
+    if torch.backends.mps.is_available():
+        return "mps"
+    elif torch.cuda.is_available():
+        return "cuda"
+    else:
+        return "cpu"
+
+
 def build_emotion_pipeline():
     """
     Build the GoEmotions classifier.
     We use SamLowe/roberta-base-go_emotions, which is widely used and well-documented.
     """
+    device = get_device()
+    print(f"Using device: {device}")
     clf = pipeline(
         "text-classification",
         model="SamLowe/roberta-base-go_emotions",
         top_k=None,  # return scores for ALL labels
+        device=device,
     )
     return clf
 
@@ -161,8 +178,8 @@ def aggregate_by_year(df: pd.DataFrame) -> pd.DataFrame:
 
 def save_results(proportions: pd.DataFrame, counts: pd.DataFrame, out_dir: Path):
     out_dir.mkdir(parents=True, exist_ok=True)
-    proportions.to_csv(out_dir / "yearly_emotion_proportions.csv")
-    counts.to_csv(out_dir / "yearly_emotion_counts.csv")
+    proportions.to_csv(out_dir / "emotions_goemotions_proportions.csv")
+    counts.to_csv(out_dir / "emotions_goemotions_counts.csv")
 
 
 def plot_heatmap(proportions: pd.DataFrame, out_dir: Path):
@@ -192,13 +209,13 @@ def plot_heatmap(proportions: pd.DataFrame, out_dir: Path):
 
     out_dir.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(out_dir / "yearly_emotions_heatmap.png", dpi=150)
+    fig.savefig(out_dir / "emotions_goemotions_heatmap.png", dpi=150)
     plt.close(fig)
 
 
 def main():
     # Output directory relative to this script's location
-    out_dir = Path(__file__).parent / "yearly_emotions_output"
+    out_dir = Path(__file__).parent / "emotions_goemotions_output"
 
     print("Loading dataset...")
     df = load_dataset()

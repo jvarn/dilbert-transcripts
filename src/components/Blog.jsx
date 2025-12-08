@@ -1,13 +1,10 @@
+import { articles } from '../articles/index.js'
+
 function Blog({ onArticleSelect }) {
-  const articles = [
-    {
-      id: 'sentiment-analysis',
-      title: 'Quantifying 35 Years of Workplace Cynicism: A Basic Sentiment Analysis of Dilbert (1989–2023)',
-      date: '2024-12-08',
-      excerpt: 'An analysis of sentiment trends in Dilbert comics over 35 years using natural language processing techniques.'
-    }
-    // More articles can be added here in the future
-  ]
+  // Sort articles by date (newest first)
+  const sortedArticles = [...articles].sort((a, b) => {
+    return new Date(b.date) - new Date(a.date)
+  })
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -21,7 +18,7 @@ function Blog({ onArticleSelect }) {
       </header>
 
       <div className="space-y-6">
-        {articles.map((article) => (
+        {sortedArticles.map((article) => (
           <article
             key={article.id}
             className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow cursor-pointer"
@@ -31,7 +28,7 @@ function Blog({ onArticleSelect }) {
               {article.title}
             </h2>
             <time className="text-sm text-gray-500 dark:text-gray-400 mb-3 block">
-              {new Date(article.date).toLocaleDateString('en-US', { 
+              {new Date(article.date).toLocaleDateString('en-UK', { 
                 year: 'numeric', 
                 month: 'long', 
                 day: 'numeric' 

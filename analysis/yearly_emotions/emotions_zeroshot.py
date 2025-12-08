@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch
 from transformers import pipeline
 
 
@@ -89,6 +90,19 @@ CANDIDATE_LABELS = [
 ]
 
 
+def get_device():
+    """
+    Determine the best available device for model inference.
+    Priority: MPS (Apple Silicon) > CUDA (NVIDIA GPU) > CPU
+    """
+    if torch.backends.mps.is_available():
+        return "mps"
+    elif torch.cuda.is_available():
+        return "cuda"
+    else:
+        return "cpu"
+
+
 def build_emotion_pipeline():
     """Build a zero-shot emotion classifier.
 
@@ -96,9 +110,12 @@ def build_emotion_pipeline():
     classification. We then define our own emotion labels that are
     well-suited to Dilbert's tone.
     """
+    device = get_device()
+    print(f"Using device: {device}")
     clf = pipeline(
         "zero-shot-classification",
         model="MoritzLaurer/deberta-v3-large-zeroshot-v1",
+        device=device,
     )
     return clf
 
@@ -168,7 +185,7 @@ def aggregate_by_year(df: pd.DataFrame) -> pd.DataFrame:
 def save_results(stats: pd.DataFrame, out_dir: Path):
     """Save yearly emotion statistics to CSV."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "yearly_zero_shot_emotions.csv"
+    out_path = out_dir / "emotions_zeroshot.csv"
     stats.to_csv(out_path, index=False)
     print(f"Yearly zero-shot emotion statistics saved to: {out_path}")
 
@@ -197,7 +214,7 @@ def plot_emotion_heatmap(stats: pd.DataFrame, out_dir: Path):
     cbar.set_label("Mean emotion score (0–1)")
 
     fig.tight_layout()
-    out_path = out_dir / "yearly_zero_shot_emotions_heatmap.png"
+    out_path = out_dir / "emotions_zeroshot_heatmap.png"
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     print(f"Zero-shot emotion heatmap saved to: {out_path}")
@@ -205,7 +222,7 @@ def plot_emotion_heatmap(stats: pd.DataFrame, out_dir: Path):
 
 def main():
     # Output directory relative to this script's location
-    out_dir = Path(__file__).parent / "zero_shot_emotion_output"
+    out_dir = Path(__file__).parent / "emotions_zeroshot_output"
 
     print("Loading dataset...")
     df = load_dataset()
